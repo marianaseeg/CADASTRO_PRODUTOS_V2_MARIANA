@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&display=swap');
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Comfortaa', sans-serif;
+    background-color: #ffacdf;
+
+    background-image: url("../FRONT-END/IMAGENS/imagemm.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+
+.container {
+    max-width: 500px;
+    background: #6ebbf3;
+    padding: 70px;
+    margin: auto;
+    border-radius: 8px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+}
+
+
+
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+
+
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+
+
+
+input {
+    padding: 10px;
+    font-size: 16px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+
+
+
+button {
+    padding: 8px;
+    font-size: 16px;
+    background-color: #e66cb9;
+    color: white;
+    cursor: pointer;
+    border: none;
+    border-radius: 18px 30px;
+}
+
+
+#limpar-tabela {
+    margin-top: 10px;
+    background-color: #f8ca00;
+    color: white;
+    border: none;
+    padding: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 18px 30px;
+}
+
+
+
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+
+th,
+td {
+    padding: 10px;
+    text-align: center;
+}
+
+
+th {
+    background-color: #ee3c86;
+    color: white;
+    border-radius: 18px 30px;
+}
+
+
+
+
+.foto-perfil {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    margin: -90px auto 20px;
+    border: 4px solid rgb(240, 31, 153);
+}
