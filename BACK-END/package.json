@@ -9,8 +9,11 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "pg": "^8.23.0",
     "sqlite3": "^6.0.1"
   },
   "keywords": [],

@@ -1,167 +1,109 @@
 require('dotenv').config();
-
 const express = require('express');
 const cors = require('cors');
-const { createClient } = require('@libsql/client');
+const { Pool } = require('pg');
 
 const app = express();
 
-app.use(cors());
+// Middlewares
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
+    allowedHeaders: ['Content-Type']
+}));
 app.use(express.json());
 
-const bancoDeDados = createClient({
-    url: process.env.TURSO_DATABASE_URL,
-    authToken: process.env.TURSO_AUTH_TOKEN
+// Servir arquivos estáticos
+app.use(express.static('public'));
+
+// Configuração de conexão com PostgreSQL (Supabase)
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false // Exigido para conexão segura na nuvem
+    }
 });
 
-// ==========================================
-// CRIAR A TABELA DE PRODUTOS
-// ==========================================
-async function criarTabela() {
-    try {
-        await bancoDeDados.execute(`
-            CREATE TABLE IF NOT EXISTS produtos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                preco REAL NOT NULL,
-                quantidade INTEGER NOT NULL
-            )
-        `);
+// Testar a conexão com o banco
+pool.query('SELECT NOW()')
+   .then(() => console.log('Conectado com sucesso ao PostgreSQL (Supabase)'))
+   .catch(err => console.error('Erro de conexão com o Supabase:', err.stack));
 
-        console.log('Tabela produtos pronta!');
-    } catch (erro) {
-        console.error('Erro ao criar tabela:', erro.message);
-    }
-}
+// -------------------------------------------------------------
+// ROTAS
+// -------------------------------------------------------------
 
-// ==========================================
-// BUSCAR TODOS OS PRODUTOS
-// ==========================================
+// ROTA GET: Busca todos os produtos
 app.get('/produtos', async (req, res) => {
     try {
-        const resultado = await bancoDeDados.execute(`
-            SELECT id, nome, preco, quantidade
-            FROM produtos
-            ORDER BY id
-        `);
-
-        res.json(resultado.rows);
+        const result = await pool.query('SELECT * FROM produtos ORDER BY id ASC');
+        res.json(result.rows);
     } catch (erro) {
-        console.error('Erro ao buscar produtos:', erro.message);
-
-        res.status(500).json({
-            error: 'Erro ao buscar produtos'
-        });
+        console.error('Erro ao buscar produtos:', erro);
+        res.status(500).json({ erro: "Erro ao buscar produtos no banco de dados." });
     }
 });
 
-// ==========================================
-// CADASTRAR PRODUTO
-// ==========================================
+// ROTA POST: Insere um novo produto
 app.post('/produtos', async (req, res) => {
     const { nome, preco, quantidade } = req.body;
 
-    const precoConvertido = parseFloat(preco);
-    const quantidadeConvertida = parseInt(quantidade);
+    const p = parseFloat(preco);
+    const q = parseInt(quantidade, 10);
 
-    if (
-        !nome ||
-        isNaN(precoConvertido) ||
-        isNaN(quantidadeConvertida)
-    ) {
-        return res.status(400).json({
-            error: 'Dados inválidos para o produto'
-        });
+    if (!nome || isNaN(p) || isNaN(q) || p <= 0 || q <= 0) {
+        return res.status(400).json({ erro: "Dados inválidos enviados para o servidor" });
     }
 
     try {
-        const resultado = await bancoDeDados.execute({
-            sql: `
-                INSERT INTO produtos (nome, preco, quantidade)
-                VALUES (?, ?, ?)
-            `,
-            args: [nome, precoConvertido, quantidadeConvertida]
-        });
+        const query = `
+           INSERT INTO produtos(nome, preco, quantidade)
+           VALUES($1, $2, $3)
+           RETURNING *
+        `;
+        const values = [nome, p, q];
+        const result = await pool.query(query, values);
 
-        const novoProduto = {
-            id: Number(resultado.lastInsertRowid),
-            nome: nome,
-            preco: precoConvertido,
-            quantidade: quantidadeConvertida
-        };
-
-        res.status(201).json(novoProduto);
-
-    } catch (erro) {
-        console.error('Erro ao cadastrar produto:', erro.message);
-
-        res.status(500).json({
-            error: 'Erro ao cadastrar produto'
-        });
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error('Erro ao salvar produto:', error);
+        res.status(500).json({ erro: 'Erro interno ao salvar produto' });
     }
 });
 
-// ==========================================
-// EXCLUIR UM PRODUTO
-// ==========================================
-app.delete('/produtos/:nome', async (req, res) => {
-    const nome = decodeURIComponent(req.params.nome);
+// ROTA DELETE (Individual)
+app.delete('/produtos/:id', async (req, res) => {
+    const { id } = req.params;
 
     try {
-        const resultado = await bancoDeDados.execute({
-            sql: `
-                DELETE FROM produtos
-                WHERE nome = ?
-            `,
-            args: [nome]
-        });
+        const result = await pool.query('DELETE FROM produtos WHERE id = $1', [id]);
 
-        if (resultado.rowsAffected === 0) {
-            return res.status(404).json({
-                error: 'Produto não encontrado'
-            });
+        if (result.rowCount === 0) {
+            return res.status(404).json({ erro: 'Produto não encontrado' });
         }
 
-        res.status(200).json({
-            mensagem: 'Produto excluído com sucesso'
-        });
-
-    } catch (erro) {
-        console.error('Erro ao excluir produto:', erro.message);
-
-        res.status(500).json({
-            error: 'Erro ao excluir produto'
-        });
+        res.status(204).send();
+    } catch (error) {
+        console.error('Erro ao deletar produto:', error);
+        res.status(500).json({ erro: "Erro ao deletar produto." });
     }
 });
 
-// ==========================================
-// EXCLUIR TODOS OS PRODUTOS
-// ==========================================
+// ROTA DELETE (Em lote)
 app.delete('/produtos', async (req, res) => {
     try {
-        await bancoDeDados.execute(`
-            DELETE FROM produtos
-        `);
-
+        await pool.query('DELETE FROM produtos');
         res.status(204).send();
-
-    } catch (erro) {
-        console.error('Erro ao limpar produtos:', erro.message);
-
-        res.status(500).json({
-            error: 'Erro ao limpar produtos'
-        });
+    } catch (error) {
+        console.error('Erro ao limpar produtos:', error);
+        res.status(500).json({ erro: "Erro ao limpar banco de dados." });
     }
 });
 
-// ==========================================
-// INICIAR SERVIDOR
-// ==========================================
+// -------------------------------------------------------------
+// INICIALIZAÇÃO DO SERVIDOR
+// -------------------------------------------------------------
 const PORT = process.env.PORT || 3000;
-
-criarTabela().then(() => {
-    app.listen(PORT, () => {
-        console.log(`Servidor backend rodando na porta ${PORT}`);
-    });
+app.listen(PORT, () => {
+    console.log(`Servidor backend rodando na porta ${PORT}`);
 });
