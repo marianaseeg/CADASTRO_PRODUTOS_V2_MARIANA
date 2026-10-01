@@ -13,11 +13,11 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/BACKEND/server.js"
+      "dest": "/BACK-END/server.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/FRONTEND/$1"
+      "dest": "/FRONT-END/$1"
     }
   ]
 }
