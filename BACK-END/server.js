@@ -71,12 +71,12 @@ app.post('/produtos', async (req, res) => {
     }
 });
 
-// ROTA DELETE (Individual)
-app.delete('/produtos/:id', async (req, res) => {
-    const { id } = req.params;
+// ROTA DELETE (Individual por Nome - Ajustado para o Frontend)
+app.delete('/produtos/:nome', async (req, res) => {
+    const { nome } = req.params;
 
     try {
-        const result = await pool.query('DELETE FROM produtos WHERE id = $1', [id]);
+        const result = await pool.query('DELETE FROM produtos WHERE nome = \$1', [nome]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({ erro: 'Produto não encontrado' });
@@ -101,9 +101,6 @@ app.delete('/produtos', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// INICIALIZAÇÃO DO SERVIDOR
+// EXPORTAÇÃO PARA A VERCEL (SERVERLESS)
 // -------------------------------------------------------------
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Servidor backend rodando na porta ${PORT}`);
-});
+module.exports = app;
