@@ -39,7 +39,7 @@ class Produto {
 }
 
 // URL da API
-const API_URL = "http://localhost:3000/produtos";
+const API_URL = "https://cadastro-produtos-v2-mariana.vercel.app/produtos";
 
 // ADICIONAR PRODUTO
 document.getElementById("produto-form").addEventListener("submit", async function (e) {
