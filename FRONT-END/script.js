@@ -1,12 +1,14 @@
-/**
+/*
  * MANTENDO A POO NO FRONTEND (ABSTRAÇÃO)
  */
 
 class Produto {
+
     #preco;
     #quantidade;
 
     constructor(nome, preco, quantidade) {
+
         if (!nome || preco <= 0 || quantidade <= 0) {
             throw new Error("Dados inválidos para o produto");
         }
@@ -28,7 +30,6 @@ class Produto {
         return this.#preco * this.#quantidade;
     }
 
-    // Método toJSON
     toJSON() {
         return {
             nome: this.nome,
@@ -38,11 +39,184 @@ class Produto {
     }
 }
 
-// URL da API
-const API_URL = "https://cadastro-produtos-v2-mariana.vercel.app/produtos";
 
-// ADICIONAR PRODUTO
+/* URL DA API */
+
+const API_URL = "http://localhost:3000/produtos";
+
+
+/* ELEMENTOS DAS TELAS */
+
+const telaLogin = document.getElementById("tela-login");
+const telaCadastro = document.getElementById("tela-cadastro");
+const telaProdutos = document.getElementById("tela-produtos");
+
+
+/* MOSTRAR CADASTRO */
+
+document.getElementById("mostrar-cadastro").addEventListener("click", function () {
+
+    telaLogin.style.display = "none";
+    telaCadastro.style.display = "block";
+
+});
+
+
+/* MOSTRAR LOGIN */
+
+document.getElementById("mostrar-login").addEventListener("click", function () {
+
+    telaCadastro.style.display = "none";
+    telaLogin.style.display = "block";
+
+});
+
+
+/* CADASTRAR USUÁRIO */
+
+document.getElementById("cadastro-form").addEventListener("submit", async function (e) {
+
+    e.preventDefault();
+
+    const nome = document.getElementById("cadastro-nome").value;
+    const email = document.getElementById("cadastro-email").value;
+    const senha = document.getElementById("cadastro-senha").value;
+
+    try {
+
+        const resposta = await fetch("http://localhost:3000/auth/registro", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                nome: nome,
+                email: email,
+                senha: senha
+            })
+
+        });
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+            throw new Error(dados.erro || "Erro ao cadastrar usuário.");
+        }
+
+        alert("Cadastro realizado com sucesso!");
+
+        document.getElementById("cadastro-form").reset();
+
+        telaCadastro.style.display = "none";
+        telaLogin.style.display = "block";
+
+    } catch (erro) {
+
+        alert(erro.message);
+
+    }
+
+});
+
+
+/* LOGIN */
+
+document.getElementById("login-form").addEventListener("submit", async function (e) {
+
+    e.preventDefault();
+
+    const email = document.getElementById("login-email").value;
+    const senha = document.getElementById("login-senha").value;
+
+    try {
+
+        const resposta = await fetch("http://localhost:3000/auth/login", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                email: email,
+                senha: senha
+            })
+
+        });
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+            throw new Error(dados.erro || "Erro ao realizar login.");
+        }
+
+        /* SALVAR TOKEN */
+
+        localStorage.setItem("token", dados.token);
+
+        /* SALVAR USUÁRIO */
+
+        localStorage.setItem("usuario", JSON.stringify(dados.usuario));
+
+        mostrarTelaProdutos();
+
+    } catch (erro) {
+
+        alert(erro.message);
+
+    }
+
+});
+
+
+/* MOSTRAR TELA DE PRODUTOS */
+
+function mostrarTelaProdutos() {
+
+    telaLogin.style.display = "none";
+    telaCadastro.style.display = "none";
+    telaProdutos.style.display = "block";
+
+    const usuario = JSON.parse(localStorage.getItem("usuario"));
+
+    document.getElementById("usuario-logado").textContent =
+        `Usuário: ${usuario.nome} | Perfil: ${usuario.perfil}`;
+
+    renderizarTabela();
+
+}
+
+
+/* SAIR */
+
+document.getElementById("sair").addEventListener("click", function () {
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario");
+
+    telaProdutos.style.display = "none";
+    telaLogin.style.display = "block";
+
+});
+
+
+/* PEGAR TOKEN */
+
+function pegarToken() {
+
+    return localStorage.getItem("token");
+
+}
+
+
+/* ADICIONAR PRODUTO */
+
 document.getElementById("produto-form").addEventListener("submit", async function (e) {
+
     e.preventDefault();
 
     const nome = document.getElementById("nome").value;
@@ -50,34 +224,52 @@ document.getElementById("produto-form").addEventListener("submit", async functio
     const quantidade = document.getElementById("quantidade").value;
 
     try {
+
         const novoProduto = new Produto(nome, preco, quantidade);
 
         const resposta = await fetch(API_URL, {
+
             method: "POST",
+
             headers: {
-                "Content-Type": "application/json"
+
+                "Content-Type": "application/json",
+
+                "Authorization": `Bearer ${pegarToken()}`
+
             },
+
             body: JSON.stringify(novoProduto.toJSON())
+
         });
 
+        const dados = await resposta.json();
+
         if (!resposta.ok) {
-            throw new Error("Erro ao salvar o produto no servidor.");
+            throw new Error(dados.erro || "Erro ao salvar o produto.");
         }
 
         renderizarTabela();
+
         e.target.reset();
 
     } catch (erro) {
+
         alert(erro.message);
+
     }
+
 });
 
 
-// BUSCAR PRODUTOS
+/* BUSCAR PRODUTOS */
+
 async function renderizarTabela() {
+
     try {
 
         const resposta = await fetch(API_URL);
+
         const dadosBrutosDoServidor = await resposta.json();
 
         const tabela = document.querySelector("#tabela-produtos tbody");
@@ -104,79 +296,142 @@ async function renderizarTabela() {
                 <td>${produto.quantidade}</td>
                 <td>R$ ${produto.valorTotal().toFixed(2)}</td>
                 <td>
-                    <button 
+                    <button
                         class="btn-excluir"
-                        onclick="excluirProduto('${produto.nome}')">
+                        onclick="excluirProduto(${dados.id})">
                         Excluir
                     </button>
                 </td>
             `;
 
             tabela.appendChild(row);
+
         });
 
         document.getElementById("total-estoque").textContent =
             `Total em estoque: R$ ${totalAcumulado.toFixed(2)}`;
 
     } catch (erro) {
+
         console.error("Erro ao buscar dados no servidor:", erro);
+
     }
+
 }
 
 
-// EXCLUIR UM PRODUTO
-async function excluirProduto(nome) {
+/* EXCLUIR UM PRODUTO */
 
-    if (!confirm(`Deseja excluir o produto "${nome}"?`)) {
+async function excluirProduto(id) {
+
+    const usuario = JSON.parse(localStorage.getItem("usuario"));
+
+    if (!usuario || usuario.perfil !== "admin") {
+
+        alert("Apenas administradores podem excluir produtos.");
+
+        return;
+
+    }
+
+    if (!confirm("Deseja excluir este produto?")) {
         return;
     }
 
     try {
 
-        const resposta = await fetch(
-            `${API_URL}/${encodeURIComponent(nome)}`,
-            {
-                method: "DELETE"
+        const resposta = await fetch(`${API_URL}/${id}`, {
+
+            method: "DELETE",
+
+            headers: {
+
+                "Authorization": `Bearer ${pegarToken()}`
+
             }
-        );
+
+        });
+
+        const dados = resposta.status === 204
+            ? {}
+            : await resposta.json();
 
         if (!resposta.ok) {
-            throw new Error("Erro ao excluir produto.");
+            throw new Error(dados.erro || "Erro ao excluir produto.");
         }
 
         renderizarTabela();
 
     } catch (erro) {
+
         console.error("Erro ao excluir produto:", erro);
+
         alert(erro.message);
+
     }
+
 }
 
 
-// LIMPAR TODA A TABELA
+/* LIMPAR TODA A TABELA */
+
 document.getElementById("limpar-tabela").addEventListener("click", async function () {
+
+    const usuario = JSON.parse(localStorage.getItem("usuario"));
+
+    if (!usuario || usuario.perfil !== "admin") {
+
+        alert("Apenas administradores podem limpar a tabela.");
+
+        return;
+
+    }
 
     if (confirm("Deseja mesmo limpar toda a tabela?")) {
 
         try {
 
             const resposta = await fetch(API_URL, {
-                method: "DELETE"
+
+                method: "DELETE",
+
+                headers: {
+
+                    "Authorization": `Bearer ${pegarToken()}`
+
+                }
+
             });
 
             if (!resposta.ok) {
-                throw new Error("Erro ao limpar a tabela.");
+
+                const dados = await resposta.json();
+
+                throw new Error(dados.erro || "Erro ao limpar a tabela.");
+
             }
 
             renderizarTabela();
 
         } catch (erro) {
+
             console.error("Erro ao limpar dados:", erro);
+
             alert(erro.message);
+
         }
+
     }
+
 });
 
 
-// CARREGA OS DADOS AO ABRIR A PÁGINA
-renderizarTabela();
+/* VERIFICAR SE JÁ ESTÁ LOGADO */
+
+const tokenSalvo = localStorage.getItem("token");
+
+if (tokenSalvo) {
+
+    mostrarTelaProdutos();
+
+}
